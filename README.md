@@ -3,7 +3,7 @@
 These are two python files that summarize my ongoing use of Bayesian Optimization
 (BO) work during my PhD. I primarily use these methods to solve difficult problems
 in cell culture media optimization. I would heavily recommend looking into the 
-[botorch](https://www.https:botorch.org/) python package, and for more information
+[botorch](www.https:botorch.org/) python package, and for more information
 about customized kernels and Gaussian Process (GP) Models look into the [gpytorch](https://gpytorch.ai/)
 package.
 

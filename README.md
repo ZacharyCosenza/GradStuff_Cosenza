@@ -7,14 +7,14 @@ in cell culture media optimization. I would heavily recommend looking into the
 about customized kernels and Gaussian Process Models look into the [gpytorch](https://gpytorch.ai/)
 package.
 
-It is recommended to use a '''conda''' environment (via Anaconda) to download 
-and manage the following python packages for 'DBO_Solver.py'.
+It is recommended to use a `conda` environment (via Anaconda) to download 
+and manage the following python packages for `DBO_Solver.py`.
 
-'''
-python 3.3.8 (>= 3.7 recommended)
-botorch 0.3.3 (0.6.1.dev48+g812f08a3 for MOBO_Solver.py)
-gpytorch 1.3.0
-pytorch 1.7.1 (>= 1.9 recommended)
-scipy 1.6.1
-'''
+`
+1. python 3.3.8 (>= 3.7 recommended)
+2. botorch 0.3.3 (0.6.1.dev48+g812f08a3 for MOBO_Solver.py)
+3. gpytorch 1.3.0
+4. pytorch 1.7.1 (>= 1.9 recommended)
+5. scipy 1.6.1
+`
 

@@ -1,4 +1,4 @@
-# Instructions for Download and Use
+# Instructions for Download and Use (Also Work in Progress)
 
 These are two python files that summarize my ongoing use of Bayesian Optimization
 (BO) work during my PhD. I primarily use these methods to solve difficult problems

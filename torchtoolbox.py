@@ -23,6 +23,7 @@ from botorch.acquisition.objective import MCAcquisitionObjective
 from typing import Callable
 import math
 from botorch.acquisition import monte_carlo  # noqa F401
+from botorch.acquisition.multi_objective.objective import MCMultiOutputObjective
 
 def fit_gpytorch_multistart(
     mll: MarginalLogLikelihood, optimizer: Callable = fit_gpytorch_scipy, **kwargs: Any
@@ -111,7 +112,7 @@ class MultiIS_Kernel(gpytorch.kernels.Kernel):
             d_j = torch.cdist(x1_j,x2_j).pow(2)
             s = self.s[j+1].expand_as(K)
             K[mask] = K[mask] + s[mask].pow(2) * torch.exp(-d_j[mask] / 2)
-        return K    
+        return K
 
 class MultiIS_ARD_Kernel(gpytorch.kernels.Kernel):
     def __init__(self,num_IS,num_dim):
@@ -146,7 +147,149 @@ class MultiIS_ARD_Kernel(gpytorch.kernels.Kernel):
             s = self.s[j+1].expand_as(K)
             K[mask] = K[mask] + s[mask].pow(2) * torch.exp(-d_j[mask] / 2)
         return K
+
+class StochasticDeterministicMultiObjective(MCMultiOutputObjective):
+
+    def __init__(self,DeterministicFunct) -> None:
+        """
+        Args:
+            samples: A `sample_shape x batch_shape x q x m`-dim Tensors of samples from
+                a model posterior.
+            X: A `batch_shape x q x d`-dim Tensors of inputs.
+
+        Returns:
+            A `sample_shape x batch_shape x q x m'`-dim Tensor of objective values with
+            `m'` the output dimension. This assumes maximization in each output
+            dimension).
+        """
+        super().__init__()
+        self.DeterministicFunct = DeterministicFunct
+
+    def forward(self, samples: Tensor, X: Optional[Tensor] = None) -> Tensor:
+        # Deterministic Function 1 (Must Follow Shape of samples)
+        # (Maximize This So Make Negative)
+        DeterministicFunct = self.DeterministicFunct
+        if type(DeterministicFunct) == MediaComplexityFunction:
+            f_1 = - DeterministicFunct.forward(X,samples)
+        else:
+            f_1 = - DeterministicFunct(X,samples)
+        
+        # Stochastic Function 2 (Maximize This, botorch assumes maximization)
+        f_2 = samples
+        
+        # Combine Functions for MultiObjective Case
+        f_moo = torch.cat((f_2, f_1), axis = -1)
+        
+        return f_moo
+
+class MediaComplexityFunction():
     
+    def __init__(self,a,mn,stdev):
+        super().__init__()
+        self.a = a
+        self.mn = mn
+        self.stdev = stdev
+        
+    def forward(self,x,samples):
+        a = self.a
+        num_dim = x.shape[-1] - 1 #account for IS
+        if samples.dim() == 3:
+            X_ = x.unsqueeze(0).repeat(samples.shape[0],1,1)
+        else:
+            X_ = x.unsqueeze(0).repeat(samples.shape[0],1,1,1)
+        phi_i = torch.exp(-0.5*(X_[...,:-1]/a)**2)
+        phi = num_dim - torch.sum(phi_i,dim = -1)
+        f = phi.unsqueeze(-1)
+        return (f - self.mn) / self.stdev
+
+def Compute_Complexity_Media(x,a):
+    num_dim = x.shape[-1] - 1 #account for IS
+    phi_i = np.exp(-0.5*(x[...,:-1]/a)**2)
+    phi = num_dim - np.sum(phi_i,axis = -1)
+    return phi
+
+def MediaCostFunction(x,samples):
+    num_dim = x.shape[-1] - 1 #account for IS
+    c = torch.tensor(np.array([1.0E-08, #MEM-NEAA
+                        1.0E-08,#MEM-EAA
+                        1.0E-08,#MEM-Vitamin
+                        1.0E-08,#Salts
+                        1.0E-08,#Trace Metals
+                        1.0E-08,#DNA Precursor
+                        1.0E-08,#Fatty Acids
+                        1.0E-08,#Sodium Selenite
+                        1.0E-08,#Ascorbic Acid
+                        1.0E-08,#Glucose
+                        1.0E-08,#Glutamine
+                        1.0E-08,#Sodium Pyruvate
+                        1.0E-08,#Sodium Chloride
+                        0.030447656,#Insulin
+                        0.003889299,#Transferrin
+                        0.633400136,#FGF2
+                        0.088898265,#TGFb1
+                        0.003583711,#EGF
+                        1.0E-08,#Progesterone
+                        1.0E-08,#Estradiol
+                        0.083342123,#IL6
+                        0.015557196,#LIF
+                        0.036981678,#TGFb3
+                        0.033336849,#HGF
+                        0.027225094,#PDGF
+                        0.043337904,#PEDF
+                        ])).reshape((num_dim,1)).to(dtype = torch.float32)
+
+    if samples.dim() == 3:
+        X_ = x.unsqueeze(0).repeat(samples.shape[0],1,1)
+    else:
+        X_ = x.unsqueeze(0).repeat(samples.shape[0],1,1,1)
+    f = X_[...,:-1] @ c
+    return f
+
+def Compute_Cost_Media(x):
+    c = np.array([1.0E-08,
+                        1.0E-08,
+                        1.0E-08,
+                        1.0E-08,
+                        1.0E-08,
+                        1.0E-08,
+                        1.0E-08,
+                        1.0E-08,
+                        1.0E-08,
+                        1.0E-08,
+                        1.0E-08,
+                        1.0E-08,
+                        1.0E-08,
+                        0.030447656,
+                        0.003889299,
+                        0.633400136,
+                        0.088898265,
+                        0.003583711,
+                        1.0E-08,
+                        1.0E-08,
+                        0.083342123,
+                        0.015557196,
+                        0.036981678,
+                        0.033336849,
+                        0.027225094,
+                        0.043337904])
+    return x[...,:-1] @ c
+     
+def Feasibility_Constraint_Callable(samples,args):
+    '''
+    A list of callables, each mapping a Tensor of dimension
+    `sample_shape x batch-shape x q x m` to a Tensor of dimension
+    `sample_shape x batch-shape x q`, where negative values imply
+    feasibility. The acqusition function will compute expected feasible
+    hypervolume.
+    WANT: Posterior(x) >= c
+          Posterior(x) - c >= 0
+    '''
+    mu0 = args[0]
+    std0 = args[1]
+    c = 1.0 #unstandardized constant to get greater than
+    con = samples - (c - mu0) / std0
+    return - con.squeeze(-1) # negative = feasible
+
 def get_training_data(N,N_0,px,toyproblem,num_IS):
     #N number of low fidelity points per fidelity
     #N_0 number of high fidelity points (must be less than N)

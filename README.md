@@ -1,6 +1,6 @@
-# Instructions for Download and Use (WORK IN PROGRESS)
+# Instructions (NO LONGER MAINTAINED)
 
-These are two python files that summarize my ongoing use of Bayesian Optimization
+These are two python files that summarize the use of Bayesian Optimization
 (BO) work during my PhD. I primarily use these methods to solve difficult problems
 in cell culture media optimization. I would heavily recommend looking into the 
 [botorch](https://botorch.org/) python package, and for more information
@@ -8,14 +8,13 @@ about customized kernels and Gaussian Process (GP) Models look into the [gpytorc
 package.
 
 It is recommended to use a `conda` environment (via Anaconda) to download 
-and manage the following python packages for `DBO_Solver.py` and `MOBO_Solver.py`.
+and manage the following python packages for `DBO_Solver.py` and `MOBO_Solver.py`. Use the most recent versions of each as the code is very general and shouldn't change much from version to version.
 
 ```
-1. python 3.3.8 (>= 3.7 recommended)
-2. botorch 0.3.3 (0.6.1.dev48+g812f08a3 for MOBO_Solver.py)
-3. gpytorch 1.3.0
-4. pytorch 1.7.1 (>= 1.9 recommended)
-5. scipy 1.6.1
+1. botorch
+2. gpytorch
+3. pytorch
+4. scipy
 ```
 
 Both files have test inputs *X* and outputs *Y* in as `numpy` arrays that can be replaced

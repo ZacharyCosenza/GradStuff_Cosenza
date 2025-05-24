@@ -8,17 +8,17 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 from copy import deepcopy
 import numpy as np
 import torch
-from botorch.sampling.samplers import SobolQMCNormalSampler
+from botorch.sampling.normal import SobolQMCNormalSampler
 from botorch.optim.optimize import optimize_acqf
 from itertools import combinations
 import gpytorch
 from torch import Tensor
 from gpytorch import constraints
 from typing import Optional
-from botorch.models.gp_regression import FixedNoiseGP
+from botorch.models.gp_regression import SingleTaskGP
 from botorch.acquisition.objective import MCAcquisitionObjective
 from gpytorch.likelihoods.gaussian_likelihood import FixedNoiseGaussianLikelihood
-from botorch import fit_gpytorch_model
+from botorch.fit import fit_gpytorch_mll
 from botorch.acquisition.monte_carlo import qNoisyExpectedImprovement
 
 class DesirabilityFunctionObjective(MCAcquisitionObjective):
@@ -103,7 +103,7 @@ class DesirabilityFunctionObjective(MCAcquisitionObjective):
         equation = 'kbij,bi->kbij'
         D = (torch.einsum(equation,d_f,d_cost) + 0.1) **(0.5)
         
-        return D.squeeze(-1)
+        return D.squeeze(-1).squeeze(1)
 
 class MultiIS_ARD_Kernel(gpytorch.kernels.Kernel):
     
@@ -185,13 +185,13 @@ Y_ = torch.from_numpy(Y_mean_standardized).to(dtype = torch.float32).view((1,len
 Y_var_= torch.from_numpy(Y_var_standardized).to(dtype = torch.float32).view((len(Y),1)) #reshape data
 
 # Set MC Sampler
-qmc_sampler = SobolQMCNormalSampler(num_samples=MC_SAMPLES)
+qmc_sampler = SobolQMCNormalSampler(torch.Size([MC_SAMPLES]))
 
 # Set Covariance Type
 covar_module = MultiIS_ARD_Kernel(num_IS,num_dim)
 
 # Set Model Type
-model = FixedNoiseGP(train_X = X_, 
+model = SingleTaskGP(train_X = X_, 
                       train_Y = Y_, 
                       train_Yvar = Y_var_,
                       covar_module = covar_module)
@@ -208,12 +208,12 @@ model.likelihood = FixedNoiseGaussianLikelihood(noise = Y_var_.flatten(),
 
 # Optimize Hyperparameters
 mll = gpytorch.mlls.ExactMarginalLogLikelihood(model.likelihood, model)
-fit_gpytorch_model(mll)
+fit_gpytorch_mll(mll)
 
 #Set Up Monte Carlo Sampler
 bounds = torch.tensor([[0.0] * (num_dim+1), [1.0] * (num_dim+1)]) #bounds should be [0,1]
 bounds[-1,-1] = 1.0 * (num_IS - 1) #last bound should allow for fidelity indicator, not needed usually
-qmc_sampler = SobolQMCNormalSampler(num_samples=MC_SAMPLES)
+qmc_sampler = SobolQMCNormalSampler(torch.Size([MC_SAMPLES]))
 
 # Set Up Optimization Objective
 objective = DesirabilityFunctionObjective([Y.mean(),Y.std()])

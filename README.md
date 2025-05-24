@@ -39,11 +39,3 @@ noisey expected hypervolume improvement function. Here quality is modeled as the
 of output *Y* space dominated by a given *X*. Similar to `DBO_Solver.py` we use a stochastic
 and deterministic function to model the output space, with the addition of a stochastic
 constraint.
-
-# 'Grouped_qKG_Code.py' (Groupe-Constrained Knowledge Gradient)
-
-This, along with the PDF provided, is an explaination of some work I did to modify the well
-known knowledge gradient (KG) function such that it could optimally allocate experiments of
-predefined constraints rather than a deterministic cost function. It did not work but I figured
-I should post it to provide people with starting points, ideas, and suggestions and also to 
-highlight some of the shortcomings of previous work and my own interest.
